@@ -1,0 +1,15 @@
+{application, nkserver_ot, [
+    {description, "NkSERVER OpenTracing Plugin"},
+    {vsn, "develop"},
+    {modules, []},
+    {registered, []},
+    {mod, {nkserver_ot_app, []}},
+    {applications, [
+        nklib,
+        nkserver,
+        dynamic_compile,
+        hackney
+    ]},
+    {env, [
+    ]}
+]}.
