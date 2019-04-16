@@ -32,7 +32,7 @@
 -export([tag/3, tags/2, tag_error/2, log/2, get_parent/1, get_span/1]).
 -export([update_srv_id/2, update_trace_id/2, update_parent/2]).
 -export([trace_id_hex/1, trace_id_to_bin/1, bin_to_trace_id/1]).
--export_type([span/0, id/0, name/0, time/0, info/0, trace_id/0, span_id/0]).
+-export_type([id/0, span/0, span_id/0, name/0, time/0, info/0]).
 
 -compile(inline).
 %-compile({no_auto_import, [get/1, put/2]}).
@@ -45,19 +45,17 @@
 %% Types
 %% ===================================================================
 
+-type id() :: span() | span_id().
 -type span() :: #span{} | undefined.
--type id() :: term().
-
-
+-type span_id() :: term().
 -type time() :: nklib_date:epoch(usecs).
-
 -type name() :: binary().
 -type info() :: binary() | iolist() | atom() | integer().
 -type key() :: atom() | list() | binary().
 -type value() :: atom() | list() | binary() | integer() | boolean().
--type trace_id() :: binary().
--type span_id() :: binary().
--type parent() :: {trace_id(), span_id()}|undefined.
+-type trace_code() :: binary().
+-type span_code() :: binary().
+-type parent() :: {trace_code(), span_code()}|undefined.
 
 %% ===================================================================
 %% Public
@@ -72,64 +70,64 @@ span(SrvId, Name) when is_atom(SrvId) ->
 
 
 %% @doc Creates a new span with a parent
--spec span(nkserver:id(), name(), parent()|id()|span()|undefined) ->
+-spec span(nkserver:id(), name(), parent()|span_id()|span()|undefined) ->
     span().
 
 span(SrvId, Name, undefined) when is_atom(SrvId) ->
     span(SrvId, Name, {undefined, undefined});
 
-span(SrvId, Name, {TraceId, ParentId}) when
+span(SrvId, Name, {TraceCode, ParentCode}) when
     is_atom(SrvId) andalso
-        (is_integer(TraceId) orelse TraceId==undefined) orelse
-        (is_integer(ParentId) orelse ParentId==undefined) ->
-    TraceId2 = case TraceId of
+        (is_integer(TraceCode) orelse TraceCode==undefined) orelse
+        (is_integer(ParentCode) orelse ParentCode==undefined) ->
+    TraceCode2 = case TraceCode of
         undefined -> make_id();
-        _ -> TraceId
+        _ -> TraceCode
     end,
     #span{
         srv = SrvId,
         timestamp = nklib_date:epoch(usecs),
-        trace_id = TraceId2,
+        trace_id = TraceCode2,
         id = make_id(),
-        parent_id = ParentId,
+        parent_id = ParentCode,
         name = Name
     };
 
-span(SrvId, Name, #span{}=ParentSpan) ->
-    span(SrvId, Name, get_parent(ParentSpan));
+span(SrvId, Name, #span{}=ParentSpanId) ->
+    span(SrvId, Name, get_parent(ParentSpanId));
 
-span(SrvId, Name, ParentId) ->
-    span(SrvId, Name, get_span(ParentId)).
+span(SrvId, Name, SpanId) ->
+    span(SrvId, Name, get_span(SpanId)).
 
 
 
 %% @doc Creates a new span without parent, and stores it in process dictionary
--spec new(id(), nkserver:id(), name()) ->
+-spec new(span_id(), nkserver:id(), name()) ->
     span().
 
-new(Id, SrvId, Name) when is_atom(SrvId) ->
-    put_span(Id, span(SrvId, Name)).
+new(SpanId, SrvId, Name) when is_atom(SrvId) ->
+    put_span(SpanId, span(SrvId, Name)).
 
 
 %% @doc Creates a new span with a parent, and stores it in process dictionary
--spec new(id(), nkserver:id(), name(), parent()|id()|span()|undefined) ->
+-spec new(span_id(), nkserver:id(), name(), parent()|span_id()|span()|undefined) ->
     span().
 
-new(Id, SrvId, Name, undefined) when is_atom(SrvId) ->
-    new(Id, SrvId, Name, {undefined, undefined});
+new(SpanId, SrvId, Name, undefined) when is_atom(SrvId) ->
+    new(SpanId, SrvId, Name, {undefined, undefined});
 
-new(Id, SrvId, Name, {TraceId, ParentId}) when is_atom(SrvId) ->
-    put_span(Id, span(SrvId, Name, {TraceId, ParentId}));
+new(SpanId, SrvId, Name, {TraceCode, ParentCode}) when is_atom(SrvId) ->
+    put_span(SpanId, span(SrvId, Name, {TraceCode, ParentCode}));
 
-new(Id, SrvId, Name, #span{}=ParentSpan) ->
-    new(Id, SrvId, Name, get_parent(ParentSpan));
+new(SpanId, SrvId, Name, #span{}=ParentSpan) ->
+    new(SpanId, SrvId, Name, get_parent(ParentSpan));
 
-new(Id, SrvId, Name, ParentId) ->
-    new(Id, SrvId, Name, get_span(ParentId)).
+new(SpainId, SrvId, Name, ParentSpanId) ->
+    new(SpainId, SrvId, Name, get_span(ParentSpanId)).
 
 
 %% @doc Adds a new tag to a span
--spec tag(id()|span(), key(), value()) ->
+-spec tag(id(), key(), value()) ->
     span().
 
 tag(undefined, _Key, _Value) ->
@@ -138,12 +136,12 @@ tag(undefined, _Key, _Value) ->
 tag(#span{}=Span, Key, Value) ->
     add_tag(Span, Key, Value);
 
-tag(Id, Key, Value) ->
-    put_span(Id, add_tag(get_span(Id), Key, Value)).
+tag(SpanId, Key, Value) ->
+    put_span(SpanId, add_tag(get_span(SpanId), Key, Value)).
 
 
 %% @doc
--spec tag_error(id()|span(), nkserver:msg()) ->
+-spec tag_error(id(), nkserver:msg()) ->
     span().
 
 tag_error(undefined, _Error) ->
@@ -157,12 +155,12 @@ tag_error(#span{srv=SrvId}=Span, Error) ->
         <<"error.reason">> => Reason
     });
 
-tag_error(Id, Error) ->
-    put_span(Id, tag_error(get_span(Id), Error)).
+tag_error(SpanId, Error) ->
+    put_span(SpanId, tag_error(get_span(SpanId), Error)).
 
 
 %% @doc Adds a set of tags to an in-process span
--spec tags(id()|span(), map()) ->
+-spec tags(id(), map()) ->
     span().
 
 tags(undefined, _Tags) ->
@@ -174,12 +172,12 @@ tags(#span{}=Span, Tags) ->
         Span,
         maps:to_list(Tags));
 
-tags(Id, Tags) ->
-    put_span(Id, tags(get_span(Id), Tags)).
+tags(SpanId, Tags) ->
+    put_span(SpanId, tags(get_span(SpanId), Tags)).
 
 
 %% @doc Adds a log to a span
--spec log(id()|span(), key()|{list(), list()}) ->
+-spec log(id(), key()|{list(), list()}) ->
     span().
 
 log(undefined, _Text) ->
@@ -188,26 +186,26 @@ log(undefined, _Text) ->
 log(#span{}=Span, Log) ->
     add_log(Span, Log);
 
-log(Id, Log) ->
-    put_span(Id, log(get_span(Id), Log)).
+log(SpanId, Log) ->
+    put_span(SpanId, log(get_span(SpanId), Log)).
 
 
-%% @doc Get TraceId and ParentId for a span
--spec get_parent(id()|span()|undefined) ->
-    {trace_id()|undefined, span_id()|undefined}.
+%% @doc Get TraceCode and ParentId for a span
+-spec get_parent(id()|undefined) ->
+    {trace_code()|undefined, span_code()|undefined}.
 
 get_parent(undefined) ->
     {undefined, undefined};
 
-get_parent(#span{trace_id=TraceId, id=Id}) ->
-    {TraceId, Id};
+get_parent(#span{trace_id=TraceCode, id=Id}) ->
+    {TraceCode, Id};
 
-get_parent(Id) ->
-    get_parent(get_span(Id)).
+get_parent(SpanId) ->
+    get_parent(get_span(SpanId)).
 
 
 %% @doc Finish a span
--spec finish(id()|span()) ->
+-spec finish(id()) ->
     ok.
 
 finish(undefined) ->
@@ -221,10 +219,10 @@ finish(#span{logs=Logs, timestamp=Start}=Span) ->
     nkserver_ot_rules:span(Span2),
     Span2;
 
-finish(Id) ->
-    Span = get_span(Id),
+finish(SpanId) ->
+    Span = get_span(SpanId),
     Span2 = finish(Span),
-    put_span(Id, undefined),
+    put_span(SpanId, undefined),
     Span2.
 
 
@@ -240,34 +238,34 @@ update_srv_id(undefined, _SrvId) ->
 update_srv_id(#span{}=Span, SrvId) when is_atom(SrvId) ->
     Span#span{srv=SrvId};
 
-update_srv_id(Id, SrvId) ->
-    put_span(Id, update_srv_id(get_span(Id), SrvId)).
+update_srv_id(SpanId, SrvId) ->
+    put_span(SpanId, update_srv_id(get_span(SpanId), SrvId)).
 
 
 %% @private
 update_trace_id(undefined, _SrvId) ->
     undefined;
 
-update_trace_id(#span{}=Span, TraceId) when is_integer(TraceId) ->
-    Span#span{trace_id = TraceId};
+update_trace_id(#span{}=Span, TraceCode) when is_integer(TraceCode) ->
+    Span#span{trace_id = TraceCode};
 
-update_trace_id(Id, SrvId) ->
-    put_span(Id, update_trace_id(get_span(Id), SrvId)).
+update_trace_id(SpanId, SrvId) ->
+    put_span(SpanId, update_trace_id(get_span(SpanId), SrvId)).
 
 
 %% @private
 update_parent(undefined, _SrvId) ->
     undefined;
 
-update_parent(#span{}=Span, {TraceId, ParentId})
-    when is_integer(TraceId), is_integer(ParentId) ->
+update_parent(#span{}=Span, {TraceCode, ParentId})
+    when is_integer(TraceCode), is_integer(ParentId) ->
     Span#span{
-        trace_id = TraceId,
+        trace_id = TraceCode,
         parent_id = ParentId
     };
 
-update_parent(Id, SrvId) ->
-    put_span(Id, update_parent(get_span(Id), SrvId)).
+update_parent(SpanId, SrvId) ->
+    put_span(SpanId, update_parent(get_span(SpanId), SrvId)).
 
 
 %% @private
@@ -276,19 +274,19 @@ make_id() ->
 
 
 %% @private
-trace_id_hex(#span{trace_id=TraceId}) ->
-    nklib_util:hex(trace_id_to_bin(TraceId)).
+trace_id_hex(#span{trace_id=TraceCode}) ->
+    nklib_util:hex(trace_id_to_bin(TraceCode)).
 
 
 %% @private
-trace_id_to_bin(TraceId) ->
-    <<TraceId:64/signed-integer>>.
+trace_id_to_bin(TraceCode) ->
+    <<TraceCode:64/signed-integer>>.
 
 
 %% @private
 bin_to_trace_id(Bin) ->
-    <<TraceId:64/signed-integer>> = Bin,
-    TraceId.
+    <<TraceCode:64/signed-integer>> = Bin,
+    TraceCode.
 
 
 %% @private
@@ -311,11 +309,11 @@ add_log(#span{logs=Logs}=Span, Val) ->
 
 
 %% @private Get top span in process dictionary
--spec get_span(id()) ->
+-spec get_span(span_id()) ->
     span() | undefined.
 
-get_span(Id) ->
-    case get({nkserver_ot_span, Id}) of
+get_span(SpanId) ->
+    case get({nkserver_ot_span, SpanId}) of
         #span{}=Span ->
             Span;
         undefined ->
@@ -324,8 +322,8 @@ get_span(Id) ->
 
 
 %% @private
-put_span(Id, Span) ->
-    put({nkserver_ot_span, Id}, Span),
+put_span(SpanId, Span) ->
+    put({nkserver_ot_span, SpanId}, Span),
     Span.
 
 
