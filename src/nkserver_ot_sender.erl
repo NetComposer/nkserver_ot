@@ -179,9 +179,9 @@ do_send_spans(Url, Spans, Total) ->
             {message_queue_len, QueueLen} = process_info(self(), message_queue_len),
             case Total >= 1000 of
                 true ->
-                    lager:notice("Sent ~p/~p SPANs (waiting ~p)", [1000, Total, QueueLen]);
+                    lager:info("Sent ~p/~p SPANs (waiting ~p)", [1000, Total, QueueLen]);
                 false ->
-                    lager:notice("Sent ~p SPANs (waiting ~p)", [Total, QueueLen])
+                    lager:info("Sent ~p SPANs (waiting ~p)", [Total, QueueLen])
             end,
             nkserver_ot_snapshots:snapshot(
                 [?MODULE, send_buffer, ok],
