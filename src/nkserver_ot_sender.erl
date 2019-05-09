@@ -78,6 +78,7 @@ pause(Boolean) ->
 
 %% @private
 init([]) ->
+    pause(false),
     case nkserver_ot_app:get(opentrace_url) of
         undefined ->
             {ok, #state{}};
