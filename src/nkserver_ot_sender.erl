@@ -122,7 +122,7 @@ handle_info(send_spans, #state{spans=[], interval=Time}=State) ->
     {noreply, State};
 
 handle_info(send_spans, #state{interval=Time, total=Total}=State) ->
-    State2 = case nklib_util:do_config_get(nkserver_ot_pause_sender) of
+    State2 = case nklib_util:do_config_get(nkserver_ot_pause_sender, false) of
         true ->
             {message_queue_len, Len} = process_info(self(), message_queue_len),
             lager:error("NKLOG SKIPING SENDING SPANS ~p (~p)", [Len, Total]),
