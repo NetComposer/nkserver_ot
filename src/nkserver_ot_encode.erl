@@ -124,7 +124,13 @@ config(SrvId, Defaults) ->
         add_default_to_tag = DefToTag,
         add_default_to_log = DefToLog
     } = Defaults,
-    Conf = Defaults#conf{service = to_bin(SrvId)},
+    SrvId2 = case catch nkserver:get_cached_config(SrvId, nkserver_ot, prefix) of
+        <<>> ->
+            to_bin(SrvId);
+        Prefix ->
+            <<Prefix/binary, (to_bin(SrvId))/binary>>
+    end,
+    Conf = Defaults#conf{service = SrvId2},
     HostBin = encode_host(default, Conf),
     LogHostBin = <<?T_STRUCT, 3:16, HostBin/binary>>,
     TagHostBin = <<?T_STRUCT, 4:16, HostBin/binary>>,

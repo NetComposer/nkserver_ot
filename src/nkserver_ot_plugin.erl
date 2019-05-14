@@ -33,13 +33,15 @@
 plugin_config(_Id, Config, _Service) ->
     Syntax = #{
         % See nkserver_ot_rules
+        opentrace_prefix => binary,
         opentrace_filter => binary
     },
     nkserver_util:parse_config(Config, Syntax).
 
 
-plugin_cache(Id, _Config, _Service) ->
+plugin_cache(Id, Config, _Service) ->
     {ok, #{
+        prefix => maps:get(opentrace_prefix, Config, <<>>),
         rules_mod => nkserver_ot_rules:get_rules_mod(Id)
     }}.
 
