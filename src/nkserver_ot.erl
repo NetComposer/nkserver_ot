@@ -29,7 +29,7 @@
 -module(nkserver_ot).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 -export([span/2, span/3, new/3, new/4, finish/1]).
--export([tag/3, tags/2, tag_error/2, log/2, get_parent/1, get_span/1]).
+-export([tag/3, tags/2, tag_error/2, log/2, log/3, get_parent/1, get_span/1]).
 -export([update_srv_id/2, update_trace_id/2, update_parent/2]).
 -export([trace_id_hex/1, trace_id_to_bin/1, bin_to_trace_id/1]).
 -export_type([id/0, span/0, span_id/0, name/0, time/0, info/0]).
@@ -37,7 +37,6 @@
 -compile(inline).
 %-compile({no_auto_import, [get/1, put/2]}).
 
--include("nkserver_ot.hrl").
 -include("nkserver_ot.hrl").
 
 
@@ -103,7 +102,7 @@ span(SrvId, Name, SpanId) ->
 
 %% @doc Creates a new span without parent, and stores it in process dictionary
 -spec new(span_id(), nkserver:id(), name()) ->
-    span().
+    span_id().
 
 new(SpanId, SrvId, Name) when is_atom(SrvId) ->
     put_span(SpanId, span(SrvId, Name)).
@@ -111,7 +110,7 @@ new(SpanId, SrvId, Name) when is_atom(SrvId) ->
 
 %% @doc Creates a new span with a parent, and stores it in process dictionary
 -spec new(span_id(), nkserver:id(), name(), parent()|span_id()|span()|undefined) ->
-    span().
+    span_id().
 
 new(SpanId, SrvId, Name, undefined) when is_atom(SrvId) ->
     new(SpanId, SrvId, Name, {undefined, undefined});
@@ -339,7 +338,7 @@ get_span(SpanId) ->
 %% @private
 put_span(SpanId, Span) ->
     put({nkserver_ot_span, SpanId}, Span),
-    Span.
+    SpanId.
 
 
 %% @private
