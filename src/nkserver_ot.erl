@@ -177,7 +177,7 @@ tags(SpanId, Tags) ->
 
 
 %% @doc Adds a log to a span
--spec log(id(), key()|{list(), list()}) ->
+-spec log(id(), key()|{list()|binary(), list()}) ->
     span().
 
 log(undefined, _Text) ->
@@ -188,6 +188,21 @@ log(#span{}=Span, Log) ->
 
 log(SpanId, Log) ->
     put_span(SpanId, log(get_span(SpanId), Log)).
+
+
+%% @doc Adds a log to a span with formatting
+-spec log(id(), list()|binary(), list()) ->
+    span().
+
+log(undefined, _Fmt, _List) ->
+    undefined;
+
+log(#span{}=Span, Fmt, List) ->
+    add_log(Span, {Fmt, List});
+
+log(SpanId, Fmt, List) ->
+    put_span(SpanId, log(get_span(SpanId), Fmt, List)).
+
 
 
 %% @doc Get TraceCode and ParentId for a span
