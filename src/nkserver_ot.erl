@@ -28,7 +28,7 @@
 
 -module(nkserver_ot).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
--export([span/2, span/3, new/3, new/4, finish/1]).
+-export([span/2, span/3, new/3, new/4, finish/1, delete/1]).
 -export([tag/3, tags/2, tag_error/2, log/2, log/3, get_parent/1, get_span/1]).
 -export([update_srv_id/2, update_trace_id/2, update_parent/2]).
 -export([trace_id_hex/1, trace_id_to_bin/1, bin_to_trace_id/1]).
@@ -220,7 +220,7 @@ get_parent(SpanId) ->
 
 %% @doc Finish a span
 -spec finish(id()) ->
-    ok.
+    id() | span().
 
 finish(undefined) ->
     undefined;
@@ -238,6 +238,22 @@ finish(SpanId) ->
     Span2 = finish(Span),
     put_span(SpanId, undefined),
     Span2.
+
+
+%% @doc Deletes a span without sending
+-spec delete(id()) ->
+    ok.
+
+delete(undefined) ->
+    ok;
+
+delete(#span{}) ->
+    ok;
+
+delete(SpanId) ->
+    put_span(SpanId, undefined),
+    ok.
+
 
 
 
