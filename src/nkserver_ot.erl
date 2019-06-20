@@ -29,10 +29,10 @@
 -module(nkserver_ot).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 -export([span/2, span/3, new/3, new/4, finish/1, delete/1]).
--export([tag/3, tags/2, tag_error/2, log/2, log/3, get_parent/1, get_span/1]).
--export([update_srv_id/2, update_trace_id/2, update_parent/2]).
+-export([tag/3, tags/2, tag_error/2, log/2, log/3, make_parent/1, get_span/1]).
+-export([update_name/2, update_srv_id/2, update_trace_id/2, update_parent/2]).
 -export([trace_id_hex/1, trace_id_to_bin/1, bin_to_trace_id/1]).
--export_type([id/0, span/0, span_id/0, name/0, time/0, info/0]).
+-export_type([id/0, span/0, span_id/0, name/0, time/0, info/0, span_code/0, trace_code/0]).
 
 -compile(inline).
 %-compile({no_auto_import, [get/1, put/2]}).
@@ -52,9 +52,9 @@
 -type info() :: binary() | iolist() | atom() | integer().
 -type key() :: atom() | list() | binary().
 -type value() :: atom() | list() | binary() | integer() | boolean().
--type trace_code() :: binary().
--type span_code() :: binary().
--type parent() :: {trace_code(), span_code()}|undefined.
+-type trace_code() :: term().
+-type span_code() :: term().
+-type parent() :: #span_parent{}.
 
 %% ===================================================================
 %% Public
@@ -73,9 +73,9 @@ span(SrvId, Name) when is_atom(SrvId) ->
     span().
 
 span(SrvId, Name, undefined) when is_atom(SrvId) ->
-    span(SrvId, Name, {undefined, undefined});
+    span(SrvId, Name, #span_parent{});
 
-span(SrvId, Name, {TraceCode, ParentCode}) when
+span(SrvId, Name, #span_parent{trace_code=TraceCode, span_code=ParentCode}) when
     is_atom(SrvId) andalso
         (is_integer(TraceCode) orelse TraceCode==undefined) orelse
         (is_integer(ParentCode) orelse ParentCode==undefined) ->
@@ -86,14 +86,14 @@ span(SrvId, Name, {TraceCode, ParentCode}) when
     #span{
         srv = SrvId,
         timestamp = nklib_date:epoch(usecs),
-        trace_id = TraceCode2,
-        id = make_id(),
-        parent_id = ParentCode,
+        trace_code = TraceCode2,
+        span_code = make_id(),
+        parent_code = ParentCode,
         name = Name
     };
 
 span(SrvId, Name, #span{}=ParentSpanId) ->
-    span(SrvId, Name, get_parent(ParentSpanId));
+    span(SrvId, Name, make_parent(ParentSpanId));
 
 span(SrvId, Name, SpanId) ->
     span(SrvId, Name, get_span(SpanId)).
@@ -113,13 +113,13 @@ new(SpanId, SrvId, Name) when is_atom(SrvId) ->
     span_id().
 
 new(SpanId, SrvId, Name, undefined) when is_atom(SrvId) ->
-    new(SpanId, SrvId, Name, {undefined, undefined});
+    new(SpanId, SrvId, Name, #span_parent{});
 
-new(SpanId, SrvId, Name, {TraceCode, ParentCode}) when is_atom(SrvId) ->
-    put_span(SpanId, span(SrvId, Name, {TraceCode, ParentCode}));
+new(SpanId, SrvId, Name, #span_parent{}=Parent) when is_atom(SrvId) ->
+    put_span(SpanId, span(SrvId, Name, Parent));
 
 new(SpanId, SrvId, Name, #span{}=ParentSpan) ->
-    new(SpanId, SrvId, Name, get_parent(ParentSpan));
+    new(SpanId, SrvId, Name, make_parent(ParentSpan));
 
 new(SpainId, SrvId, Name, ParentSpanId) ->
     new(SpainId, SrvId, Name, get_span(ParentSpanId)).
@@ -205,17 +205,20 @@ log(SpanId, Fmt, List) when is_list(List) ->
 
 
 %% @doc Get TraceCode and ParentId for a span
--spec get_parent(id()|undefined) ->
-    {trace_code()|undefined, span_code()|undefined}.
+-spec make_parent(id()|parent()|undefined) ->
+    #span_parent{}.
 
-get_parent(undefined) ->
-    {undefined, undefined};
+make_parent(#span_parent{}=SpanParent) ->
+    SpanParent;
 
-get_parent(#span{trace_id=TraceCode, id=Id}) ->
-    {TraceCode, Id};
+make_parent(undefined) ->
+    #span_parent{};
 
-get_parent(SpanId) ->
-    get_parent(get_span(SpanId)).
+make_parent(#span{trace_code=TraceCode, span_code=SpanCode}) ->
+    #span_parent{trace_code=TraceCode, span_code=SpanCode};
+
+make_parent(SpanId) ->
+    make_parent(get_span(SpanId)).
 
 
 %% @doc Finish a span
@@ -262,6 +265,17 @@ delete(SpanId) ->
 %% ===================================================================
 
 %% @private
+update_name(undefined, _SrvId) ->
+    undefined;
+
+update_name(#span{}=Span, Name) ->
+    Span#span{name=to_bin(Name)};
+
+update_name(SpanId, Name) ->
+    put_span(SpanId, update_name(get_span(SpanId), Name)).
+
+
+%% @private
 update_srv_id(undefined, _SrvId) ->
     undefined;
 
@@ -277,25 +291,24 @@ update_trace_id(undefined, _SrvId) ->
     undefined;
 
 update_trace_id(#span{}=Span, TraceCode) when is_integer(TraceCode) ->
-    Span#span{trace_id = TraceCode};
+    Span#span{trace_code = TraceCode};
 
 update_trace_id(SpanId, SrvId) ->
     put_span(SpanId, update_trace_id(get_span(SpanId), SrvId)).
 
 
 %% @private
-update_parent(undefined, _SrvId) ->
+update_parent(undefined, _Parent) ->
     undefined;
 
-update_parent(#span{}=Span, {TraceCode, ParentId})
-    when is_integer(TraceCode), is_integer(ParentId) ->
+update_parent(#span{}=Span, #span_parent{trace_code=TraceCode, span_code=ParentCode}) ->
     Span#span{
-        trace_id = TraceCode,
-        parent_id = ParentId
+        trace_code = TraceCode,
+        parent_code = ParentCode
     };
 
-update_parent(SpanId, SrvId) ->
-    put_span(SpanId, update_parent(get_span(SpanId), SrvId)).
+update_parent(SpanId, Parent) ->
+    put_span(SpanId, update_parent(get_span(SpanId), Parent)).
 
 
 %% @private
@@ -304,7 +317,7 @@ make_id() ->
 
 
 %% @private
-trace_id_hex(#span{trace_id=TraceCode}) ->
+trace_id_hex(#span{trace_code =TraceCode}) ->
     nklib_util:hex(trace_id_to_bin(TraceCode)).
 
 

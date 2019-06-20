@@ -76,10 +76,10 @@ encode(Spans) when is_list(Spans) ->
 encode_span(Span, Defaults) ->
     #span{
         srv = SrvId,
-        id = Id,
-        trace_id = TraceId,
+        span_code = Id,
+        trace_code = TraceId,
         name = Name,
-        parent_id = ParentId,
+        parent_code = ParentId,
         logs = Logs,
         tags = Tags,
         timestamp = Timestamp,
