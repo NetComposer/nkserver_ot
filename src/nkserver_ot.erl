@@ -196,10 +196,10 @@ log(SpanId, Log) ->
 log(undefined, _Fmt, _List) ->
     undefined;
 
-log(#span{}=Span, Fmt, List) ->
+log(#span{}=Span, Fmt, List) when is_list(List) ->
     add_log(Span, {Fmt, List});
 
-log(SpanId, Fmt, List) ->
+log(SpanId, Fmt, List) when is_list(List) ->
     put_span(SpanId, log(get_span(SpanId), Fmt, List)).
 
 
@@ -360,5 +360,4 @@ put_span(SpanId, Span) ->
 %% @private
 to_bin(Term) when is_binary(Term) -> Term;
 to_bin(Term) -> nklib_util:to_binary(Term).
-
 

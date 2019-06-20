@@ -236,8 +236,10 @@ to_bin(K) -> nklib_util:to_binary(K).
 
 
 %% @private
-to_value({Fmt, Str}) when is_list(Fmt), is_list(Str) ->
-    list_to_binary(io_lib:format(Fmt, Str));
+to_value({Fmt, List}) when is_list(Fmt), is_list(List) ->
+    list_to_binary(io_lib:format(Fmt, List));
+to_value({Fmt, List}) when is_binary(Fmt), is_list(List) ->
+    to_value({binary_to_list(Fmt), List});
 to_value(Val) when is_binary(Val) ->
     Val;
 to_value(Val) when is_list(Val) ->
