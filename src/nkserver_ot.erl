@@ -147,11 +147,11 @@ tag_error(undefined, _Error) ->
     undefined;
 
 tag_error(#span{srv=SrvId}=Span, Error) ->
-    {Code, Reason} = nkserver_msg:msg(SrvId, Error),
+    #{status:=Status} = Map = nkserver_status:status(SrvId, Error),
     tags(Span, #{
         <<"error">> => true,
-        <<"error.code">> => Code,
-        <<"error.reason">> => Reason
+        <<"error.code">> => Status,
+        <<"error.reason">> => maps:get(info, Map, <<>>)
     });
 
 tag_error(SpanId, Error) ->
