@@ -89,7 +89,7 @@ span(SrvId, Name, #span_parent{trace_code=TraceCode, span_code=ParentCode}) when
         trace_code = TraceCode2,
         span_code = make_id(),
         parent_code = ParentCode,
-        name = Name
+        name = to_bin(Name)
     };
 
 span(SrvId, Name, #span{}=ParentSpanId) ->
