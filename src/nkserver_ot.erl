@@ -140,7 +140,7 @@ tag(SpanId, Key, Value) ->
 
 
 %% @doc
--spec tag_error(id(), nkserver:msg()) ->
+-spec tag_error(id(), nkserver:status()) ->
     span().
 
 tag_error(undefined, _Error) ->
