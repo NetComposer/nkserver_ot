@@ -41,6 +41,7 @@ plugin_config(_Id, Config, _Service) ->
 
 plugin_cache(Id, Config, _Service) ->
     {ok, #{
+        activated => true,
         prefix => maps:get(opentrace_prefix, Config, <<>>),
         rules_mod => nkserver_ot_rules:get_rules_mod(Id)
     }}.
