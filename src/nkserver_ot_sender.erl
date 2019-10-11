@@ -80,8 +80,6 @@ pause(Boolean) ->
 init([]) ->
     pause(false),
     case nkserver_ot_app:get(activate) of
-        true ->
-            {ok, #state{}};
         false ->
             Url = nkserver_ot_app:get(opentrace_url),
             ok = hackney_pool:start_pool(?MODULE, []),
@@ -92,7 +90,9 @@ init([]) ->
             State = #state{url = binary_to_list(Url), interval = Time},
             lager:notice("Starting NkSERVER SPAN Sender (url:~s, interval:~p)", [Url, Time]),
             self() ! send_spans,
-            {ok, State}
+            {ok, State};
+        false ->
+            {ok, #state{}}
     end.
 
 
