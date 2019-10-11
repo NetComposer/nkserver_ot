@@ -79,7 +79,7 @@ pause(Boolean) ->
 %% @private
 init([]) ->
     pause(false),
-    case nkserver_ot_app:get(activated) of
+    case nkserver_ot_app:get(activate) of
         true ->
             {ok, #state{}};
         false ->
