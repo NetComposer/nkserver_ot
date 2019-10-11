@@ -79,10 +79,11 @@ pause(Boolean) ->
 %% @private
 init([]) ->
     pause(false),
-    case nkserver_ot_app:get(opentrace_url) of
-        undefined ->
+    case nkserver_ot_app:get(activated) of
+        true ->
             {ok, #state{}};
-        Url ->
+        false ->
+            Url = nkserver_ot_app:get(opentrace_url),
             ok = hackney_pool:start_pool(?MODULE, []),
             ok = hackney_pool:set_max_connections(?MODULE, 2),
             ok = hackney_pool:set_timeout(?MODULE, 10000),
