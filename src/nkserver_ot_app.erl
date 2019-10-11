@@ -60,9 +60,11 @@ start(Type) ->
 %% @doc
 start(_Type, _Args) ->
     Syntax = #{
+        activate => boolean,
         opentrace_url => binary,
         opentrace_interval => integer,
         '__defaults' => #{
+            activate => false,
             opentrace_interval => 5000
         }
     },
