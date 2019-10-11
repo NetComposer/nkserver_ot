@@ -80,7 +80,7 @@ pause(Boolean) ->
 init([]) ->
     pause(false),
     case nkserver_ot_app:get(activate) of
-        false ->
+        true ->
             Url = nkserver_ot_app:get(opentrace_url),
             ok = hackney_pool:start_pool(?MODULE, []),
             ok = hackney_pool:set_max_connections(?MODULE, 2),
