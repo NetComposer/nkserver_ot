@@ -176,6 +176,9 @@ do_send_spans(Url, Spans, Total) ->
         {pool, ?MODULE},
         with_body
     ],
+%%    lists:foreach(
+%%        fun(Span) -> lager:error("NKLOG SPANs ~p", [lager:pr(Span, ?MODULE)]) end,
+%%        Spans),
     case hackney:request(post, Url, Hds, Data2, Opts) of
         {ok, 202, _, _} ->
             {message_queue_len, QueueLen} = process_info(self(), message_queue_len),
