@@ -32,6 +32,7 @@
 -export([tag/3, tags/2, tag_error/2, log/2, log/3, make_parent/1, get_span/1]).
 -export([get_id/1, update_name/2, update_srv_id/2, update_trace_id/2, update_parent/2]).
 -export([trace_id_hex/1, trace_id_to_bin/1, bin_to_trace_id/1]).
+-export([span_id_hex/1, span_id_to_bin/1, bin_to_span_id/1]).
 -export_type([id/0, span/0, span_id/0, name/0, time/0, info/0, span_code/0, trace_code/0]).
 
 -compile(inline).
@@ -329,7 +330,7 @@ make_id() ->
 trace_id_hex(undefined) ->
     <<>>;
 
-trace_id_hex(#span{trace_code =TraceCode}) ->
+trace_id_hex(#span{trace_code=TraceCode}) ->
     nklib_util:hex(trace_id_to_bin(TraceCode));
 
 trace_id_hex(SpanId) ->
@@ -345,6 +346,29 @@ trace_id_to_bin(TraceCode) ->
 bin_to_trace_id(Bin) ->
     <<TraceCode:64/signed-integer>> = Bin,
     TraceCode.
+
+
+%% @private
+span_id_hex(undefined) ->
+    <<>>;
+
+span_id_hex(#span{span_code=SpanCode}) ->
+    nklib_util:hex(span_id_to_bin(SpanCode));
+
+span_id_hex(SpanId) ->
+    span_id_hex(get_span(SpanId)).
+
+
+%% @private
+span_id_to_bin(SpanCode) ->
+    <<SpanCode:64/signed-integer>>.
+
+
+%% @private
+bin_to_span_id(Bin) ->
+    <<SpanCode:64/signed-integer>> = Bin,
+    SpanCode.
+
 
 
 %% @private
