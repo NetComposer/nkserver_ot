@@ -29,7 +29,7 @@
 -module(nkserver_ot).
 -author('Carlos Gonzalez <carlosj.gf@gmail.com>').
 -export([span/2, span/3, new/3, new/4, finish/1, delete/1]).
--export([tag/3, tags/2, tag_error/2, log/2, log/3, make_parent/1, get_span/1]).
+-export([tag/3, tags/2, tag_error/2, log/2, log/3, make_parent/1, get_span/1, update/2]).
 -export([get_id/1, update_name/2, update_srv_id/2, update_trace_id/2, update_parent/2]).
 -export([trace_id_hex/1, trace_id_to_bin/1, bin_to_trace_id/1]).
 -export([span_id_hex/1, span_id_to_bin/1, bin_to_span_id/1]).
@@ -86,6 +86,7 @@ span(SrvId, Name, #span_parent{trace_code=TraceCode, span_code=ParentCode}) when
     end,
     #span{
         srv = SrvId,
+        app = to_bin(SrvId),
         timestamp = nklib_date:epoch(usecs),
         trace_code = TraceCode2,
         span_code = make_id(),
@@ -207,13 +208,13 @@ log(SpanId, Fmt, List) when is_list(List) ->
 
 %% @doc Get TraceCode and ParentId for a span
 -spec make_parent(id()|parent()|undefined) ->
-    #span_parent{}.
+    #span_parent{} | undefined.
+
+make_parent(undefined) ->
+    undefined;
 
 make_parent(#span_parent{}=SpanParent) ->
     SpanParent;
-
-make_parent(undefined) ->
-    #span_parent{};
 
 make_parent(#span{trace_code=TraceCode, span_code=SpanCode}) ->
     #span_parent{trace_code=TraceCode, span_code=SpanCode};
@@ -270,9 +271,50 @@ get_id(SpanId) ->
     get_id(get_span(SpanId)).
 
 
+%% @doc
+update(undefined, _Updates) ->
+    ok;
+
+update(#span{}=Span, Updates) ->
+    do_updates(Updates, Span);
+
+update(SpanId, Updates) ->
+    case get_span(SpanId) of
+        undefined ->
+            ok;
+        #span{}=Span ->
+            Span2 = update(Span, Updates),
+            put_span(SpanId, Span2),
+            ok
+    end.
+
+
+
+
 %% ===================================================================
 %% Internal
 %% ===================================================================
+
+%% @private
+do_updates([], Span) ->
+    Span;
+
+do_updates([{srv, SrvId}|Rest], Span) when is_atom(SrvId) ->
+    do_updates(Rest, Span#span{srv=SrvId});
+
+do_updates([{app, App}|Rest], Span) ->
+    do_updates(Rest, Span#span{app=to_bin(App)});
+
+do_updates([{name, Name}|Rest], Span) ->
+    do_updates(Rest, Span#span{name=to_bin(Name)});
+
+do_updates([{trace_code, TraceCode}|Rest], Span) when is_integer(TraceCode) ->
+    do_updates(Rest, Span#span{trace_code=TraceCode});
+
+do_updates([{parent, Parent}|Rest], Span) ->
+    do_updates(Rest, update_parent(Span, Parent)).
+
+
 
 %% @private
 update_name(undefined, _SrvId) ->

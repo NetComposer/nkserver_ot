@@ -76,6 +76,7 @@ encode(Spans) when is_list(Spans) ->
 encode_span(Span, Defaults) ->
     #span{
         srv = SrvId,
+        app = App,
         span_code = Id,
         trace_code = TraceId,
         name = Name,
@@ -85,7 +86,7 @@ encode_span(Span, Defaults) ->
         timestamp = Timestamp,
         duration = Duration
     } = Span,
-    Cfg = config(SrvId, Defaults),
+    Cfg = config(SrvId, App, Defaults),
     % Needed to store the service for OpenZipkin
     Tags0Bin = encode_tag({<<"lc">>, {<<>>, default}}, Cfg),
     TagSize = maps:size(Tags)+1,
@@ -119,16 +120,16 @@ encode_span(Span, Defaults) ->
 
 
 %% @doc
-config(SrvId, Defaults) ->
+config(SrvId, App, Defaults) ->
     #conf{
         add_default_to_tag = DefToTag,
         add_default_to_log = DefToLog
     } = Defaults,
     SrvId2 = case catch nkserver:get_cached_config(SrvId, nkserver_ot, prefix) of
         <<>> ->
-            to_bin(SrvId);
+            App;
         Prefix ->
-            <<Prefix/binary, (to_bin(SrvId))/binary>>
+            <<Prefix/binary, App/binary>>
     end,
     Conf = Defaults#conf{service = SrvId2},
     HostBin = encode_host(default, Conf),

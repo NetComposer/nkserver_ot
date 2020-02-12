@@ -13,6 +13,7 @@
 
 -record(span, {
     srv        :: nkserver:id(),
+    app        :: nkserver_ot:name(),
     timestamp  :: nkserver_ot:time(),
     trace_code :: nkserver_ot:trace_code() | undefined,
     name       :: nkserver_ot:name(),
