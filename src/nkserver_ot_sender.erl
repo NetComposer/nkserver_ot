@@ -126,13 +126,13 @@ handle_info(send_spans, #state{interval=Time, total=Total}=State) ->
     State2 = case nklib_util:do_config_get(nkserver_ot_pause_sender, false) of
         true ->
             {message_queue_len, Len} = process_info(self(), message_queue_len),
-            lager:error("NKLOG SKIPING SENDING SPANS ~p (~p)", [Len, Total]),
-            State;
+            lager:notice("Skipping sendings ~p spans (waiting: ~p)", [Total, Len]),
+            State#state{spans=[], total=0};
         _ ->
             do_send_spans(State)
     end,
     erlang:send_after(Time, self(), send_spans),
-    {noreply, State2#state{spans=[]}};
+    {noreply, State2};
 
 handle_info(Msg, State) ->
     lager:error("Received unexpected info at ~p: ~p", [?MODULE, Msg]),
