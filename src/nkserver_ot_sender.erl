@@ -38,7 +38,7 @@
 -export([split/2]).
 
 -include("nkserver_ot.hrl").
-
+-define(SPAN_BATCH, 100).
 
 %% ===================================================================
 %% Public
@@ -157,11 +157,11 @@ terminate(_Reason, _State) ->
 
 %% @private
 do_send_spans(#state{url=Url, spans=Spans, total=Total}=State) ->
-    case Total > 1000 of
+    case Total > ?SPAN_BATCH of
         true ->
-            {Spans2, Rest} = split(Spans, 1000),
+            {Spans2, Rest} = split(Spans, ?SPAN_BATCH),
             do_send_spans(Url, Spans2, Total),
-            do_send_spans(State#state{spans=Rest, total=Total-1000});
+            do_send_spans(State#state{spans=Rest, total=Total-?SPAN_BATCH});
         false ->
             do_send_spans(Url, Spans, Total),
             State#state{spans=[], total=0}
@@ -182,9 +182,9 @@ do_send_spans(Url, Spans, Total) ->
     case hackney:request(post, Url, Hds, Data2, Opts) of
         {ok, 202, _, _} ->
             {message_queue_len, QueueLen} = process_info(self(), message_queue_len),
-            case Total >= 1000 of
+            case Total >= ?SPAN_BATCH of
                 true ->
-                    lager:debug("Sent ~p/~p SPANs (waiting ~p)", [1000, Total, QueueLen]);
+                    lager:debug("Sent ~p/~p SPANs (waiting ~p)", [?SPAN_BATCH, Total, QueueLen]);
                 false ->
                     lager:debug("Sent ~p SPANs (waiting ~p)", [Total, QueueLen])
             end,
