@@ -134,6 +134,9 @@ handle_info(send_spans, #state{interval=Time, total=Total}=State) ->
     erlang:send_after(Time, self(), send_spans),
     {noreply, State2};
 
+handle_info({ssl_closed, _}, State) ->
+    {noreply, State};
+
 handle_info(Msg, State) ->
     lager:error("Received unexpected info at ~p: ~p", [?MODULE, Msg]),
     {noreply, State}.
